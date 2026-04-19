@@ -1,0 +1,11 @@
+---
+description: 禁止在本机执行 Flutter 打包/构建命令
+alwaysApply: true
+---
+
+# 禁止本机执行打包/构建命令
+
+在本项目中，助手**不得在本机执行任何 `flutter build ...` 命令**（包含但不限于 `flutter build apk/appbundle/ipa/web/windows/macos/linux`），避免在用户本地触发打包流程。
+
+允许的命令示例（如需）：`flutter pub get`、`flutter analyze`、`flutter test`、纯读取/检查类命令。
+

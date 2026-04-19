@@ -14,6 +14,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # 与 pubspec.yaml 中 name 保持一致
+      PROJECT_NAME: media_sort
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -56,8 +59,11 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
+      - name: Name APK after project
+        run: cp "build/app/outputs/flutter-apk/app-release.apk" "build/app/outputs/flutter-apk/${PROJECT_NAME}.apk"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: ${{ env.PROJECT_NAME }}
+          path: build/app/outputs/flutter-apk/${{ env.PROJECT_NAME }}.apk
