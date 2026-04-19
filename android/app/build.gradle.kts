@@ -58,24 +58,6 @@ android {
     }
 }
 
-afterEvaluate {
-    // AGP 8+ 的公开 Variant API 不再稳定暴露 outputFileName，这里用 assemble 后重命名方式，兼容本地与 CI。
-    // Flutter 默认输出：<buildDir>/outputs/flutter-apk/app-<buildType>.apk
-    tasks.matching { it.name == "assembleRelease" }.configureEach {
-        doLast {
-            val baseName = (rootProject.name ?: "app").replace("\\s+".toRegex(), "_")
-            val versionName = android.defaultConfig.versionName ?: "0.0.0"
-            val outDir = layout.buildDirectory.dir("outputs/flutter-apk").get().asFile
-
-            val from = java.io.File(outDir, "app-release.apk")
-            if (!from.exists()) return@doLast
-
-            val to = java.io.File(outDir, "${baseName}_v${versionName}-release.apk")
-            from.copyTo(to, overwrite = true)
-        }
-    }
-}
-
 flutter {
     source = "../.."
 }
