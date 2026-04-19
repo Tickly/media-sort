@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import 'media_thumbnail.dart';
+import 'day_sections.dart';
 
 class MediaGrid extends StatelessWidget {
   const MediaGrid({
@@ -25,30 +26,45 @@ class MediaGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sections = groupAssetIndicesByDay(items);
     return CustomScrollView(
       controller: controller,
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.all(2),
-          sliver: SliverGrid(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 2,
-              mainAxisSpacing: 2,
-            ),
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final entity = items[index];
-                return GestureDetector(
-                  onTap: () => onTap(index),
-                  child: MediaThumbnail(entity: entity),
-                );
-              },
-              childCount: items.length,
+        for (final section in sections) ...[
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+              child: Text(
+                formatYyyyMmDd(section.day),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
             ),
           ),
-        ),
+          SliverPadding(
+            padding: const EdgeInsets.all(2),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 4,
+                crossAxisSpacing: 2,
+                mainAxisSpacing: 2,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, sectionIndex) {
+                  final globalIndex = section.indices[sectionIndex];
+                  final entity = items[globalIndex];
+                  return GestureDetector(
+                    onTap: () => onTap(globalIndex),
+                    child: MediaThumbnail(entity: entity),
+                  );
+                },
+                childCount: section.indices.length,
+              ),
+            ),
+          ),
+        ],
         SliverToBoxAdapter(
           child: _Footer(
             isLoadingMore: isLoadingMore,

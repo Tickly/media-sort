@@ -6,6 +6,8 @@ import 'package:photo_manager/photo_manager.dart';
 import 'media_grid.dart';
 import '../viewer/media_viewer_page.dart';
 
+enum DateSortOrder { desc, asc }
+
 class GalleryPage extends StatefulWidget {
   const GalleryPage({super.key});
 
@@ -24,8 +26,21 @@ class _GalleryPageState extends State<GalleryPage> {
   int _page = 0;
   Object? _lastError;
 
+  DateSortOrder _dateSortOrder = DateSortOrder.desc;
+
   final ScrollController _scrollController = ScrollController();
   void Function(dynamic)? _changeCallback;
+
+  FilterOptionGroup _buildFilter() {
+    final group = FilterOptionGroup();
+    group.addOrderOption(
+      OrderOption(
+        type: OrderOptionType.createDate,
+        asc: _dateSortOrder == DateSortOrder.asc,
+      ),
+    );
+    return group;
+  }
 
   @override
   void initState() {
@@ -86,10 +101,12 @@ class _GalleryPageState extends State<GalleryPage> {
   }
 
   Future<void> _loadPath() async {
+    final filter = _buildFilter();
     final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
       type: RequestType.common,
       hasAll: true,
       onlyAll: true,
+      filterOption: filter,
     );
 
     if (!mounted) return;
@@ -100,6 +117,19 @@ class _GalleryPageState extends State<GalleryPage> {
 
   Future<void> _refresh() async {
     if (_path == null) return;
+    try {
+      final refreshed = await _path!.fetchPathProperties(
+        filterOptionGroup: _buildFilter(),
+      );
+      if (!mounted) return;
+      if (refreshed != null) {
+        setState(() {
+          _path = refreshed;
+        });
+      }
+    } catch (_) {
+      // ignore; fall back to existing path
+    }
     setState(() {
       _items.clear();
       _page = 0;
@@ -159,6 +189,24 @@ class _GalleryPageState extends State<GalleryPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('相册'),
+        actions: [
+          IconButton(
+            tooltip: _dateSortOrder == DateSortOrder.desc ? '日期倒序（最新在前）' : '日期正序（最旧在前）',
+            icon: Icon(
+              _dateSortOrder == DateSortOrder.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+            ),
+            onPressed: () {
+              setState(() {
+                _dateSortOrder =
+                    _dateSortOrder == DateSortOrder.desc ? DateSortOrder.asc : DateSortOrder.desc;
+              });
+              unawaited(_refresh());
+              if (_scrollController.hasClients) {
+                _scrollController.jumpTo(0);
+              }
+            },
+          ),
+        ],
       ),
       body: SafeArea(
         child: Builder(

@@ -1,5 +1,6 @@
 import java.io.FileInputStream
 import java.util.Properties
+import com.android.build.api.variant.ApkVariantOutput
 
 plugins {
     id("com.android.application")
@@ -55,6 +56,20 @@ android {
             signingConfig =
                 signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
         }
+    }
+}
+
+androidComponents {
+    onVariants { variant ->
+        val baseName = (rootProject.name ?: "app").replace("\\s+".toRegex(), "_")
+        val versionName = variant.versionName.orNull ?: "0.0.0"
+        val buildType = variant.buildType ?: variant.name
+
+        variant.outputs
+            .filterIsInstance<ApkVariantOutput>()
+            .forEach { output ->
+                output.outputFileName.set("${baseName}_v${versionName}-${buildType}.apk")
+            }
     }
 }
 
