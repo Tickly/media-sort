@@ -59,11 +59,18 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Name APK after project
-        run: cp "build/app/outputs/flutter-apk/app-release.apk" "build/app/outputs/flutter-apk/${PROJECT_NAME}.apk"
+      - name: Resolve versioned APK path
+        shell: bash
+        run: |
+          VERSION_LINE="$(grep -E '^version:' pubspec.yaml | head -n 1)"
+          VERSION="$(echo "$VERSION_LINE" | sed -E 's/^version:[[:space:]]*//')"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "APK_PATH=build/app/outputs/flutter-apk/${PROJECT_NAME}_v${VERSION}-release.apk" >> "$GITHUB_ENV"
+          ls -la build/app/outputs/flutter-apk || true
+          test -f "build/app/outputs/flutter-apk/${PROJECT_NAME}_v${VERSION}-release.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PROJECT_NAME }}
-          path: build/app/outputs/flutter-apk/${{ env.PROJECT_NAME }}.apk
+          name: ${{ env.PROJECT_NAME }}_v${{ env.VERSION }}
+          path: ${{ env.APK_PATH }}
