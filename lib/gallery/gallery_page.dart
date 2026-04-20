@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import '../albums/albums_page.dart';
 import 'media_grid.dart';
 import '../viewer/media_viewer_page.dart';
 
@@ -31,6 +32,61 @@ class _GalleryPageState extends State<GalleryPage> {
   final ScrollController _scrollController = ScrollController();
   void Function(dynamic)? _changeCallback;
 
+  /// 输入：无。
+  /// 输出：无返回值；开启媒体库变更监听（已存在旧监听时会先移除，避免重复触发刷新）。
+  void _ensureChangeNotifyEnabled() {
+    if (_changeCallback != null) {
+      PhotoManager.removeChangeCallback(_changeCallback!);
+      PhotoManager.stopChangeNotify();
+      _changeCallback = null;
+    }
+
+    _changeCallback = (method) {
+      // 媒体库变化时轻量刷新；首版先直接刷新列表
+      if (mounted) {
+        unawaited(_refresh());
+      }
+    };
+    PhotoManager.addChangeCallback(_changeCallback!);
+    PhotoManager.startChangeNotify();
+  }
+
+  /// 输入：无（使用当前页面状态）。
+  /// 输出：无返回值；清空当前所有数据并重新初始化，效果等同“重新进入 App”。
+  Future<void> _reloadAll() async {
+    setState(() {
+      _permissionState = null;
+      _path = null;
+      _items.clear();
+      _isLoading = false;
+      _hasMore = true;
+      _page = 0;
+      _lastError = null;
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
+
+    await _init();
+  }
+
+  /// 输入：无（使用当前状态里的 `_items` 与 `_dateSortOrder`）。
+  /// 输出：无返回值；会就地对 `_items` 做稳定排序（主键：`createDateTime`，次键：`id`）。
+  void _sortItemsInPlace() {
+    final asc = _dateSortOrder == DateSortOrder.asc;
+    _items.sort((a, b) {
+      final at = a.createDateTime.millisecondsSinceEpoch;
+      final bt = b.createDateTime.millisecondsSinceEpoch;
+      final cmpTime = at.compareTo(bt);
+      if (cmpTime != 0) return asc ? cmpTime : -cmpTime;
+
+      // 二级排序：用 id 保证稳定（同一秒内也能保持一致顺序）。
+      final cmpId = a.id.compareTo(b.id);
+      return asc ? cmpId : -cmpId;
+    });
+  }
+
   FilterOptionGroup _buildFilter() {
     final group = FilterOptionGroup();
     group.addOrderOption(
@@ -54,6 +110,7 @@ class _GalleryPageState extends State<GalleryPage> {
     if (_changeCallback != null) {
       PhotoManager.removeChangeCallback(_changeCallback!);
       PhotoManager.stopChangeNotify();
+      _changeCallback = null;
     }
     _scrollController
       ..removeListener(_onScroll)
@@ -70,14 +127,7 @@ class _GalleryPageState extends State<GalleryPage> {
     if (!mounted) return;
     await _refresh();
 
-    _changeCallback = (method) {
-      // 媒体库变化时轻量刷新；首版先直接刷新列表
-      if (mounted) {
-        unawaited(_refresh());
-      }
-    };
-    PhotoManager.addChangeCallback(_changeCallback!);
-    PhotoManager.startChangeNotify();
+    _ensureChangeNotifyEnabled();
   }
 
   Future<void> _requestPermission() async {
@@ -156,6 +206,7 @@ class _GalleryPageState extends State<GalleryPage> {
       if (!mounted) return;
       setState(() {
         _items.addAll(pageItems);
+        _sortItemsInPlace();
         _page += 1;
         _hasMore = pageItems.length == _pageSize;
       });
@@ -191,14 +242,35 @@ class _GalleryPageState extends State<GalleryPage> {
         title: const Text('相册'),
         actions: [
           IconButton(
-            tooltip: _dateSortOrder == DateSortOrder.desc ? '日期倒序（最新在前）' : '日期正序（最旧在前）',
+            tooltip: '相册列表',
+            icon: const Icon(Icons.photo_album_rounded),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AlbumsPage()),
+              );
+            },
+          ),
+          IconButton(
+            tooltip: '重新加载媒体资源',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () {
+              unawaited(_reloadAll());
+            },
+          ),
+          IconButton(
+            tooltip: _dateSortOrder == DateSortOrder.desc
+                ? '日期倒序（最新在前）'
+                : '日期正序（最旧在前）',
             icon: Icon(
-              _dateSortOrder == DateSortOrder.desc ? Icons.arrow_downward_rounded : Icons.arrow_upward_rounded,
+              _dateSortOrder == DateSortOrder.desc
+                  ? Icons.arrow_downward_rounded
+                  : Icons.arrow_upward_rounded,
             ),
             onPressed: () {
               setState(() {
-                _dateSortOrder =
-                    _dateSortOrder == DateSortOrder.desc ? DateSortOrder.asc : DateSortOrder.desc;
+                _dateSortOrder = _dateSortOrder == DateSortOrder.desc
+                    ? DateSortOrder.asc
+                    : DateSortOrder.desc;
               });
               unawaited(_refresh());
               if (_scrollController.hasClients) {
@@ -238,10 +310,8 @@ class _GalleryPageState extends State<GalleryPage> {
                 onTap: (index) {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => MediaViewerPage(
-                        items: _items,
-                        initialIndex: index,
-                      ),
+                      builder: (_) =>
+                          MediaViewerPage(items: _items, initialIndex: index),
                     ),
                   );
                 },
@@ -255,10 +325,7 @@ class _GalleryPageState extends State<GalleryPage> {
 }
 
 class _PermissionGate extends StatelessWidget {
-  const _PermissionGate({
-    required this.permissionState,
-    required this.onRetry,
-  });
+  const _PermissionGate({required this.permissionState, required this.onRetry});
 
   final PermissionState permissionState;
   final Future<void> Function() onRetry;
@@ -315,4 +382,3 @@ class _PermissionGate extends StatelessWidget {
     );
   }
 }
-
