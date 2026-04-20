@@ -28,6 +28,9 @@ class _AlbumsPageState extends State<AlbumsPage> {
   /// 用于缓存相册“目录提示”（从封面资源 `relativePath` 推导）。
   final Map<String, String> _dirHintByAlbumId = <String, String>{};
 
+  /// 用于缓存相册路径（`AssetPathEntity.relativePathAsync`）。
+  final Map<String, String?> _relativePathByAlbumId = <String, String?>{};
+
   /// 输入：无。
   /// 输出：无返回值；请求系统媒体库权限，并更新 `_permissionState`。
   Future<void> _requestPermission() async {
@@ -59,6 +62,7 @@ class _AlbumsPageState extends State<AlbumsPage> {
       _coverBytesByAlbumId.clear();
       _countByAlbumId.clear();
       _dirHintByAlbumId.clear();
+      _relativePathByAlbumId.clear();
     });
 
     try {
@@ -145,6 +149,32 @@ class _AlbumsPageState extends State<AlbumsPage> {
     // 通过加载封面来填充目录提示缓存。
     await _getCoverBytes(album);
     return _dirHintByAlbumId[album.id];
+  }
+
+  /// 输入：`album` 相册实体。
+  /// 输出：相册路径（相对路径字符串，可能为 null）；内部会按 `album.id` 缓存结果。
+  Future<String?> _getAlbumRelativePath(AssetPathEntity album) async {
+    if (_relativePathByAlbumId.containsKey(album.id)) {
+      return _relativePathByAlbumId[album.id];
+    }
+    try {
+      final p = await album.relativePathAsync;
+      _relativePathByAlbumId[album.id] = p;
+      return p;
+    } catch (_) {
+      _relativePathByAlbumId[album.id] = null;
+      return null;
+    }
+  }
+
+  /// 输入：`album` 相册实体。
+  /// 输出：用于展示的“相册路径”字符串；优先取 `relativePathAsync`，否则回退到目录提示。
+  Future<String?> _getAlbumPathForDisplay(AssetPathEntity album) async {
+    final p = await _getAlbumRelativePath(album);
+    if (p != null && p.trim().isNotEmpty) return p;
+    final hint = await _getDirHint(album);
+    if (hint != null && hint.trim().isNotEmpty) return hint;
+    return null;
   }
 
   /// 输入：无。
@@ -261,16 +291,16 @@ class _AlbumsPageState extends State<AlbumsPage> {
                       overflow: TextOverflow.ellipsis,
                     ),
                     subtitle: FutureBuilder<String?>(
-                      future: _getDirHint(album),
+                      future: _getAlbumPathForDisplay(album),
                       builder: (context, snapshot) {
                         return FutureBuilder<int>(
                           future: _getCount(album),
                           builder: (context, countSnap) {
-                            final hint = snapshot.data;
+                            final pathText = snapshot.data;
                             final count = countSnap.data ?? 0;
                             final parts = <String>['数量：$count'];
-                            if (hint != null && hint.isNotEmpty) {
-                              parts.add('目录：$hint');
+                            if (pathText != null && pathText.isNotEmpty) {
+                              parts.add('路径：$pathText');
                             }
                             return Text(
                               parts.join(' · '),
