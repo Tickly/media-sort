@@ -64,11 +64,18 @@ jobs:
       - name: Build APK
         run: flutter build apk --release
 
-      - name: Name APK after project
-        run: cp "build/app/outputs/flutter-apk/app-release.apk" "build/app/outputs/flutter-apk/${PROJECT_NAME}.apk"
+      # 输入：PROJECT_NAME；输出：GITHUB_ENV 中的 BUILD_TIME（YYYYMMDDHHmm，无秒）、重命名后的 APK 路径供下一步上传。
+      - name: Name APK with build time
+        env:
+          TZ: Asia/Shanghai
+        run: |
+          BUILD_TIME="$(date +%Y%m%d%H%M)"
+          echo "BUILD_TIME=${BUILD_TIME}" >> "${GITHUB_ENV}"
+          cp "build/app/outputs/flutter-apk/app-release.apk" \
+            "build/app/outputs/flutter-apk/${PROJECT_NAME}_${BUILD_TIME}.apk"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.PROJECT_NAME }}
-          path: build/app/outputs/flutter-apk/${{ env.PROJECT_NAME }}.apk
+          name: ${{ env.PROJECT_NAME }}-${{ env.BUILD_TIME }}
+          path: build/app/outputs/flutter-apk/${{ env.PROJECT_NAME }}_${{ env.BUILD_TIME }}.apk
