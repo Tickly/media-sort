@@ -9,7 +9,7 @@
 - **已实现能力（以代码为准）**：
   - 使用 [`photo_manager`](https://pub.dev/packages/photo_manager) 读取系统相册中的**图片与视频**（`RequestType.common`），需系统相册权限；支持权限被拒绝/受限/有限访问等状态的引导与重试、打开系统设置。
   - **相册页**（[`lib/gallery/gallery_page.dart`](lib/gallery/gallery_page.dart)）：分页加载（每页 120 条）、接近列表底部自动加载更多、下拉刷新；按资源的 **`createDateTime`（通常更接近“拍摄时间”语义）** 排序，避免因“加入相册/复制入库”等行为导致旧照片意外跑到最前；AppBar 可在**日期倒序（最新在前）**与**日期正序（最旧在前）**之间切换；监听媒体库变更后刷新列表。
-  - **相册列表页**（[`lib/albums/albums_page.dart`](lib/albums/albums_page.dart)）：以列表展示系统返回的相册（MediaStore bucket），展示**相册名称**、**数量**、**封面缩略图**与**目录提示**（从封面资源的 `relativePath` 推导）；当前仅用于浏览，不提供点击进入相册网格的交互。
+  - **相册列表页**（[`lib/albums/albums_page.dart`](lib/albums/albums_page.dart)）：以列表展示系统返回的相册（MediaStore bucket），展示**相册名称**、**数量**、**封面缩略图**与**路径**（优先取相册自身 `relativePathAsync`，否则回退到封面资源 `relativePath` 推导）；支持**点击进入相册内容页**，复用网格分页/排序/查看器能力。
   - **网格展示**（[`lib/gallery/media_grid.dart`](lib/gallery/media_grid.dart) + [`day_sections.dart`](lib/gallery/day_sections.dart)）：按**自然日**分组（以 `createDateTime` 转为本地日历日），每组标题 `YYYY-MM-DD`，四列网格。
   - **缩略图**（[`lib/gallery/media_thumbnail.dart`](lib/gallery/media_thumbnail.dart)）：约 320×320、质量 80；视频显示角标与时长。
   - **查看器**（[`lib/viewer/media_viewer_page.dart`](lib/viewer/media_viewer_page.dart)）：横向滑动浏览当前已加载列表；图片支持 `InteractiveViewer` 缩放；视频使用 [`video_player`](https://pub.dev/packages/video_player) 点击播放/暂停。

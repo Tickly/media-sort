@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../gallery/album_name.dart';
+import '../gallery/gallery_page.dart';
 
 class AlbumsPage extends StatefulWidget {
   const AlbumsPage({super.key});
@@ -311,8 +312,16 @@ class _AlbumsPageState extends State<AlbumsPage> {
                         );
                       },
                     ),
-                    // 按你的要求：不做点击交互
-                    onTap: null,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => GalleryPage(
+                            initialPath: album,
+                            title: album.name,
+                          ),
+                        ),
+                      );
+                    },
                   );
                 },
               ),

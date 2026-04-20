@@ -10,7 +10,19 @@ import '../viewer/media_viewer_page.dart';
 enum DateSortOrder { desc, asc }
 
 class GalleryPage extends StatefulWidget {
-  const GalleryPage({super.key});
+  const GalleryPage({
+    super.key,
+    this.initialPath,
+    this.title,
+  });
+
+  /// 输入：由 `photo_manager` 获取到的相册实体（Android 上通常对应 MediaStore bucket）。
+  /// 输出：无；当传入时，页面将展示该相册内的媒体列表；未传入时展示“全部”相册。
+  final AssetPathEntity? initialPath;
+
+  /// 输入：页面标题字符串（通常为相册名）。
+  /// 输出：无；当传入时用于 AppBar 标题显示，未传入时显示默认标题。
+  final String? title;
 
   @override
   State<GalleryPage> createState() => _GalleryPageState();
@@ -123,7 +135,22 @@ class _GalleryPageState extends State<GalleryPage> {
     if (!mounted) return;
     if (_permissionState?.isAuth != true) return;
 
-    await _loadPath();
+    if (widget.initialPath != null) {
+      try {
+        final refreshed = await widget.initialPath!.obtainForNewProperties();
+        if (!mounted) return;
+        setState(() {
+          _path = refreshed;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _path = widget.initialPath;
+        });
+      }
+    } else {
+      await _loadPath();
+    }
     if (!mounted) return;
     await _refresh();
 
@@ -239,7 +266,7 @@ class _GalleryPageState extends State<GalleryPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('相册'),
+        title: Text(widget.title ?? '相册'),
         actions: [
           IconButton(
             tooltip: '相册列表',
