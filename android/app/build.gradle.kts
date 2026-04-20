@@ -8,6 +8,8 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// 输入：android/key.properties（CI 或本机生成，勿提交仓库）。字段：storePassword、keyPassword、keyAlias、storeFile（相对 android/app）。
+// 输出：若文件存在则注册 signingConfigs.release；否则 release 使用 debug 签名。
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {

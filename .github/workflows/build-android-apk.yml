@@ -1,6 +1,10 @@
 # 构建 release APK 并上传 artifact。
-# 可选：在仓库 Settings → Secrets 中配置 ANDROID_KEYSTORE_BASE64、ANDROID_KEYSTORE_PASSWORD、
-# ANDROID_KEY_PASSWORD、ANDROID_KEY_ALIAS，则使用正式签名；未配置时使用 debug 签名（仅适合测试）。
+# 在仓库 Settings → Secrets 中配置以下四个密钥则使用固定正式签名；缺任一则 release 回退为 debug 签名（仅适合 CI 冒烟）：
+#   ANDROID_KEYSTORE_BASE64 — keystore 文件经 base64 后的整段内容
+#   KEYSTORE_PASSWORD — keystore 的 store 密码
+#   KEY_ALIAS — 签名密钥别名
+#   KEY_PASSWORD — 该别名下密钥的密码
+# 兼容旧名（若未配新名仍可生效）：ANDROID_KEYSTORE_PASSWORD、ANDROID_KEY_PASSWORD、ANDROID_KEY_ALIAS
 
 name: Build Android APK
 
@@ -33,23 +37,24 @@ jobs:
           channel: stable
           cache: true
 
+      # 输入：上述四个 GitHub Secrets（经 env 注入）。输出：android/app/upload-keystore.jks、android/key.properties（供 Gradle 读取）。
       - name: Prepare release keystore (optional)
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.ANDROID_KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.ANDROID_KEY_ALIAS }}
         run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || \
-             [ -z "$ANDROID_KEY_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ]; then
-            echo "No ANDROID_* signing secrets — using debug keystore for release (OK for CI smoke test)."
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ] || [ -z "${KEYSTORE_PASSWORD:-}" ] || \
+             [ -z "${KEY_PASSWORD:-}" ] || [ -z "${KEY_ALIAS:-}" ]; then
+            echo "Signing secrets incomplete — using debug keystore for release (OK for CI smoke test)."
             exit 0
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          printf '%s' "${ANDROID_KEYSTORE_BASE64}" | base64 -d > android/app/upload-keystore.jks
           {
-            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
-            echo "keyPassword=$ANDROID_KEY_PASSWORD"
-            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "storePassword=${KEYSTORE_PASSWORD}"
+            echo "keyPassword=${KEY_PASSWORD}"
+            echo "keyAlias=${KEY_ALIAS}"
             echo "storeFile=upload-keystore.jks"
           } > android/key.properties
 
