@@ -3,6 +3,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import 'album_name.dart';
+
 class MediaThumbnail extends StatelessWidget {
   const MediaThumbnail({
     super.key,
@@ -10,9 +12,12 @@ class MediaThumbnail extends StatelessWidget {
   });
 
   final AssetEntity entity;
+  static final AlbumNameCache _albumNameCache = AlbumNameCache();
 
   @override
   Widget build(BuildContext context) {
+    final albumName = _albumNameCache.get(entity);
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -20,8 +25,44 @@ class MediaThumbnail extends StatelessWidget {
           color: Colors.black12,
           child: _Thumb(entity: entity),
         ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _AlbumOverlayLabel(text: albumName),
+        ),
         if (entity.type == AssetType.video) _VideoBadge(entity: entity),
       ],
+    );
+  }
+}
+
+class _AlbumOverlayLabel extends StatelessWidget {
+  const _AlbumOverlayLabel({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.black54, Colors.transparent],
+        ),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          height: 1.1,
+        ),
+      ),
     );
   }
 }
